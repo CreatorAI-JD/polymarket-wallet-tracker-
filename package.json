@@ -1,0 +1,10 @@
+{
+  "name": "polymarket-wallet-tracker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --experimental-strip-types --test src/lib/consensus/engine.test.ts"
+  },
+  "engines": { "node": ">=22.6" }
+}
