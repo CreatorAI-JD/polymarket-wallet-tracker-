@@ -1,0 +1,811 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Polymarket Wallet Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0B1120;--side:#101827;--card:#172235;--card2:#1D2939;--border:#293548;
+  --green:#16A36A;--green2:#22C58B;--red:#EF5350;--blue:#3B82F6;
+  --text:#F8FAFC;--text2:#94A3B8;--muted:#64748B;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:400 13.5px/1.45 Inter,system-ui,sans-serif}
+a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
+.num{font-variant-numeric:tabular-nums}
+button,input,select{font:inherit;color:var(--text)}
+.app{display:flex;min-height:100vh}
+/* sidebar */
+.side{width:224px;flex:none;background:var(--side);border-right:1px solid var(--border);padding:16px 12px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:2px;transition:width .15s}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 8px 18px;font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden}
+.brand .logo{width:26px;height:26px;border-radius:7px;background:var(--green);display:grid;place-items:center;flex:none}
+.nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;color:var(--text2);white-space:nowrap;overflow:hidden}
+.nav a:hover{background:var(--card);text-decoration:none;color:var(--text)}
+.nav a.active{background:rgba(22,163,106,.14);color:var(--green2)}
+.nav svg{width:17px;height:17px;flex:none}
+.nav .badge{margin-left:auto;background:var(--green);color:#fff;border-radius:9px;font-size:11px;padding:0 6px;font-weight:600}
+.side .foot{margin-top:auto;color:var(--muted);font-size:11px;padding:8px;line-height:1.4}
+.collapse-btn{margin-top:8px;background:none;border:1px solid var(--border);border-radius:8px;padding:6px;color:var(--text2);cursor:pointer}
+.app.collapsed .side{width:64px}.app.collapsed .side .lbl,.app.collapsed .side .foot,.app.collapsed .brand span,.app.collapsed .nav .badge{display:none}
+/* main */
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;padding:10px 24px;background:rgba(11,17,32,.92);backdrop-filter:blur(6px);border-bottom:1px solid var(--border)}
+.menu-btn{display:none;background:none;border:1px solid var(--border);border-radius:8px;padding:6px 8px;cursor:pointer}
+.search{position:relative;flex:1;max-width:460px}
+.search input{width:100%;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:8px 12px}
+.search input:focus{outline:2px solid var(--blue);outline-offset:-1px}
+.results{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--card2);border:1px solid var(--border);border-radius:10px;max-height:360px;overflow:auto;display:none;z-index:30}
+.results a{display:block;padding:8px 12px;color:var(--text);border-bottom:1px solid var(--border)}
+.results a:hover{background:var(--card);text-decoration:none}
+.results small{color:var(--muted);display:block}
+.status{display:flex;align-items:center;gap:8px;color:var(--text2);font-size:12px;margin-left:auto;white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.dot.live{background:var(--green2);box-shadow:0 0 0 0 rgba(34,197,139,.6);animation:pulse 2s infinite}
+.dot.delayed{background:#F59E0B}.dot.err{background:var(--red)}
+@keyframes pulse{70%{box-shadow:0 0 0 6px rgba(34,197,139,0)}100%{box-shadow:0 0 0 0 rgba(34,197,139,0)}}
+.bell{position:relative;background:none;border:1px solid var(--border);border-radius:8px;padding:6px 8px;cursor:pointer;color:var(--text2)}
+.bell .count{position:absolute;top:-6px;right:-6px;background:var(--red);color:#fff;font-size:10px;font-weight:700;border-radius:9px;padding:0 5px;display:none}
+.content{padding:22px 24px 48px;max-width:1440px;width:100%}
+h1{font-size:26px;font-weight:700;margin:0 0 4px}
+.desc{color:var(--text2);margin:0 0 18px}
+h2{font-size:18px;font-weight:600;margin:0}
+.grid{display:grid;gap:14px}
+.stats{grid-template-columns:repeat(auto-fill,minmax(180px,1fr));margin-bottom:18px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
+.card h3{font-size:14px;font-weight:600;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+.card h3 .right{margin-left:auto;font-weight:400;font-size:12px}
+.stat .v{font-size:24px;font-weight:700}
+.stat .l{color:var(--text2);font-size:12px;margin-top:2px}
+.stat .t{color:var(--muted);font-size:11px;margin-top:8px}
+.two{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
+.pos{color:var(--green2)}.neg{color:var(--red)}.mut{color:var(--muted)}.sec{color:var(--text2)}
+.pill{display:inline-block;font-size:11px;font-weight:600;padding:1px 7px;border-radius:6px;border:1px solid var(--border);white-space:nowrap}
+.pill.buy{color:var(--green2);border-color:rgba(34,197,139,.4)}
+.pill.sell{color:var(--red);border-color:rgba(239,83,80,.4)}
+.pill.out{color:var(--text);background:var(--card2)}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th,td{padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
+th{color:var(--text2);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;cursor:default;user-select:none}
+th.s{cursor:pointer}th.s:hover{color:var(--text)}
+td.r,th.r{text-align:right}
+tbody tr:hover{background:rgba(255,255,255,.025)}
+tr.click{cursor:pointer}
+td.mkt{max-width:340px;overflow:hidden;text-overflow:ellipsis}
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:center}
+.filters input,.filters select,.seg button{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:6px 10px}
+.filters input{min-width:0}
+.seg{display:inline-flex;gap:0}
+.seg button{border-radius:0;cursor:pointer;color:var(--text2)}
+.seg button:first-child{border-radius:8px 0 0 8px}.seg button:last-child{border-radius:0 8px 8px 0}
+.seg button+button{border-left:none}
+.seg button.on{background:rgba(22,163,106,.18);color:var(--green2)}
+.btn{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer;color:var(--text)}
+.btn:hover{border-color:var(--blue)}
+.btn.primary{background:var(--green);border-color:var(--green)}
+.pager{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:10px;color:var(--text2);font-size:12px}
+.feed .item{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:9px 0;border-bottom:1px solid var(--border)}
+.feed .item:last-child{border:none}
+.feed .meta{color:var(--muted);font-size:12px}
+.cons{border-left:3px solid var(--green);background:var(--card2);border-radius:10px;padding:12px 14px;margin-bottom:10px}
+.cons .row{display:flex;gap:14px;flex-wrap:wrap;color:var(--text2);font-size:12px;margin-top:6px}
+.cons .t{font-weight:600}
+.bar{height:6px;background:var(--card2);border-radius:4px;overflow:hidden;width:100px;display:inline-block;vertical-align:middle}
+.bar i{display:block;height:100%;background:var(--green)}
+.empty{color:var(--muted);padding:24px;text-align:center}
+.note{background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.3);border-radius:10px;padding:10px 14px;color:var(--text2);font-size:12.5px;margin-bottom:16px}
+.warn{background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.35)}
+.kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
+.kv div small{display:block;color:var(--muted);font-size:11px}
+.kv div b{font-weight:600}
+.addr{font-family:ui-monospace,Menlo,monospace;font-size:12px}
+.panel{position:fixed;top:0;right:0;width:min(520px,100%);height:100vh;background:var(--side);border-left:1px solid var(--border);z-index:50;overflow:auto;padding:20px;transform:translateX(100%);transition:transform .18s}
+.panel.open{transform:none}
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:40;display:none}
+.scrim.open{display:block}
+.loading{color:var(--text2);padding:30px;text-align:center}
+.spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--green2);border-radius:50%;animation:spin .8s linear infinite;display:inline-block;vertical-align:middle;margin-right:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.timeline{border-left:2px solid var(--border);margin-left:6px;padding-left:16px}
+.timeline .ev{position:relative;padding:6px 0}
+.timeline .ev::before{content:"";position:absolute;left:-22px;top:12px;width:10px;height:10px;border-radius:50%;background:var(--green)}
+.timeline .ev.sell::before{background:var(--red)}
+label.f{display:flex;flex-direction:column;gap:4px;color:var(--text2);font-size:12px}
+@media (max-width:1000px){.two{grid-template-columns:1fr}}
+@media (max-width:820px){
+  .side{position:fixed;left:0;z-index:60;transform:translateX(-100%);transition:transform .18s}
+  .app.drawer .side{transform:none}
+  .menu-btn{display:block}
+  .top{padding:10px 16px}.content{padding:18px 16px 40px}
+  .status .ts{display:none}
+  .collapse-btn{display:none}
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="side" id="side">
+    <div class="brand"><div class="logo"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4"><path d="M3 17l6-6 4 4 8-8"/></svg></div><span>Wallet Intelligence</span></div>
+    <nav class="nav" id="nav"></nav>
+    <button class="collapse-btn" id="collapse" title="Collapse sidebar">⇤</button>
+    <div class="foot">Read-only. Public Polymarket data. Not financial advice.</div>
+  </aside>
+  <div class="main">
+    <header class="top">
+      <button class="menu-btn" id="menu" aria-label="Open navigation">☰</button>
+      <div class="search">
+        <input id="q" placeholder="Search wallets, addresses, markets…" autocomplete="off">
+        <div class="results" id="results"></div>
+      </div>
+      <div class="status"><span class="dot" id="dot"></span><span id="conn">Connecting…</span><span class="ts mut" id="updated"></span></div>
+      <button class="bell" id="bell" aria-label="Notifications">🔔<span class="count" id="bellCount"></span></button>
+    </header>
+    <main class="content" id="view"></main>
+  </div>
+</div>
+<div class="scrim" id="scrim"></div>
+<aside class="panel" id="panel"></aside>
+
+<script>
+"use strict";
+// ---------- config & utils ----------
+const API = "https://data-api.polymarket.com/v2";
+const DEFAULTS = { topN: 50, period: "month", minWallets: 3, windowMin: 60, minTrade: 100, lookbackH: 24, browserNotify: false };
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("pwt:" + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("pwt:" + k, JSON.stringify(v)); } catch {} }
+};
+let settings = { ...DEFAULTS, ...store.get("settings", {}) };
+
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const short = (a) => a ? a.slice(0, 6) + "…" + a.slice(-4) : "";
+const usd = (n, d = 0) => n == null || isNaN(n) ? '<span class="mut">Unavailable</span>' :
+  (n < 0 ? "-$" : "$") + Math.abs(n).toLocaleString("en-US", { maximumFractionDigits: d, minimumFractionDigits: d });
+const usdC = (n) => { if (n == null || isNaN(n)) return usd(n); const a = Math.abs(n);
+  const s = a >= 1e6 ? (a / 1e6).toFixed(2) + "M" : a >= 1e3 ? (a / 1e3).toFixed(1) + "K" : a.toFixed(0); return (n < 0 ? "-$" : "$") + s; };
+const pnl = (n) => n == null ? usd(n) : `<span class="${n >= 0 ? "pos" : "neg"}">${n >= 0 ? "+" : ""}${usdC(n)}</span>`;
+const num = (n) => n == null ? '<span class="mut">Unavailable</span>' : Math.round(n).toLocaleString("en-US");
+const cents = (p) => p == null ? "—" : (p * 100).toFixed(1) + "¢";
+const ago = (ms) => { const s = Math.max(0, (Date.now() - ms) / 1000);
+  if (s < 60) return Math.floor(s) + "s ago"; if (s < 3600) return Math.floor(s / 60) + "m ago";
+  if (s < 86400) return Math.floor(s / 3600) + "h ago"; return Math.floor(s / 86400) + "d ago"; };
+const dt = (ms) => new Date(ms).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// ---------- API client with retry/backoff ----------
+const health = { ok: 0, failed: 0, lastSuccess: null, lastError: null, errors: [], syncing: false, lastCycleMs: null };
+async function api(path, tries = 4) {
+  let wait = 800;
+  for (let i = 0; i < tries; i++) {
+    try {
+      const r = await fetch(API + path);
+      if (r.status === 429 || r.status === 503) {
+        const ra = Number(r.headers.get("Retry-After")) || 0;
+        await sleep(Math.max(ra * 1000, wait)); wait *= 2; continue;
+      }
+      if (!r.ok) throw new Error(`HTTP ${r.status} on ${path.split("?")[0]}`);
+      const j = await r.json();
+      health.ok++; health.lastSuccess = Date.now();
+      return j;
+    } catch (e) {
+      if (i === tries - 1) {
+        health.failed++; health.lastError = Date.now();
+        health.errors.unshift({ at: Date.now(), msg: e.message || String(e) }); health.errors.length = Math.min(health.errors.length, 20);
+        throw e;
+      }
+      await sleep(wait); wait *= 2;
+    }
+  }
+  throw new Error("Rate limited: " + path.split("?")[0]);
+}
+async function pool(items, n, fn) {
+  const out = []; let i = 0;
+  await Promise.all(Array.from({ length: n }, async () => { while (i < items.length) { const k = i++; try { out[k] = await fn(items[k]); } catch (e) { out[k] = null; } } }));
+  return out;
+}
+
+// ---------- consensus engine (port of src/lib/consensus/engine.ts) ----------
+const W = { walletCount: 0.4, walletQuality: 0.3, sizeVsHistory: 0.15, dispersion: 0.15 };
+class ConsensusEngine {
+  constructor(config) { this.config = config; this.seen = new Set(); this.buckets = new Map(); this.history = new Map();
+    this.tokensByCondition = new Map(); this.active = new Map(); this.nextId = 1; }
+  static key(t) { return [t.transactionId, t.wallet, t.tokenId, t.side, t.shares, t.price].join("|"); }
+  process(trade) {
+    const t = { ...trade, wallet: trade.wallet.toLowerCase() }; const k = ConsensusEngine.key(t);
+    if (this.seen.has(k)) return { kind: "ignored", reason: "duplicate" };
+    const p = this.config.getWallet(t.wallet);
+    if (!p) return { kind: "ignored", reason: "wallet not tracked" };
+    if (p.rank > this.config.maxRank) return { kind: "ignored", reason: "rank" };
+    if (t.side === "BUY" && t.usdc < this.config.minTradeUsd) return { kind: "ignored", reason: "size" };
+    this.seen.add(k);
+    if (!this.tokensByCondition.has(t.conditionId)) this.tokensByCondition.set(t.conditionId, new Set());
+    this.tokensByCondition.get(t.conditionId).add(t.tokenId);
+    const b = this.buckets.get(t.tokenId) ?? []; b.push({ trade: t, rank: p.rank });
+    this.buckets.set(t.tokenId, this.prune(b, t.timestamp));
+    let ev = this.active.get(t.tokenId);
+    if (ev && t.timestamp - ev.latestTradeAt > this.config.windowMs) { this.active.delete(t.tokenId); ev = undefined; }
+    const parts = ev ? this.participants((this.history.get(t.tokenId) ?? []).filter((e) => e.trade.timestamp >= ev.firstTradeAt))
+                     : this.participants(this.buckets.get(t.tokenId));
+    const q = parts.filter((x) => x.netUsd > 0);
+    if (!ev) {
+      if (q.length < this.config.minWallets) return { kind: "recorded" };
+      const c = this.build(t, q, "ce" + this.nextId++, t.timestamp); this.active.set(t.tokenId, c); return { kind: "created", event: c };
+    }
+    const before = new Set(ev.participants.map((x) => x.wallet));
+    const u = this.build(t, q, ev.id, ev.firstDetected); this.active.set(t.tokenId, u);
+    const after = new Set(u.participants.map((x) => x.wallet));
+    return { kind: "updated", event: u, walletsJoined: [...after].filter((w) => !before.has(w)), walletsLeft: [...before].filter((w) => !after.has(w)) };
+  }
+  prune(b, now) {
+    const last = b[b.length - 1]; const h = this.history.get(last.trade.tokenId) ?? []; h.push(last);
+    const a = this.active.get(last.trade.tokenId);
+    const from = Math.min(now - this.config.windowMs, a?.firstTradeAt ?? Infinity);
+    this.history.set(last.trade.tokenId, h.filter((e) => e.trade.timestamp >= from));
+    return b.filter((e) => now - e.trade.timestamp <= this.config.windowMs);
+  }
+  participants(entries) {
+    const m = new Map();
+    for (const { trade: t, rank } of entries) {
+      let p = m.get(t.wallet);
+      if (!p) { p = { wallet: t.wallet, rankAtJoin: rank, boughtUsd: 0, soldUsd: 0, netUsd: 0, firstTradeAt: t.timestamp, latestTradeAt: t.timestamp, trades: [] }; m.set(t.wallet, p); }
+      if (t.side === "BUY") p.boughtUsd += t.usdc; else p.soldUsd += t.usdc;
+      p.netUsd = p.boughtUsd - p.soldUsd;
+      p.firstTradeAt = Math.min(p.firstTradeAt, t.timestamp); p.latestTradeAt = Math.max(p.latestTradeAt, t.timestamp);
+      p.trades.push(t);
+    }
+    return [...m.values()];
+  }
+  build(t, q, id, firstDetected) {
+    const combined = q.reduce((s, p) => s + p.netUsd, 0);
+    const c = this.score(q, combined);
+    const w = c.sizeVsHistory === null
+      ? (W.walletCount * c.walletCount + W.walletQuality * c.walletQuality + W.dispersion * c.dispersion) / (1 - W.sizeVsHistory)
+      : W.walletCount * c.walletCount + W.walletQuality * c.walletQuality + W.sizeVsHistory * c.sizeVsHistory + W.dispersion * c.dispersion;
+    return { id, conditionId: t.conditionId, tokenId: t.tokenId, outcome: t.outcome, title: t.title, slug: t.eventSlug,
+      firstDetected, lastUpdated: t.timestamp,
+      firstTradeAt: Math.min(...q.map((p) => p.firstTradeAt)), latestTradeAt: Math.max(...q.map((p) => p.latestTradeAt)),
+      participants: q.sort((a, b) => b.netUsd - a.netUsd), distinctWallets: q.length, combinedNetUsd: combined,
+      score: Math.round(w * 100), components: c, opposing: this.opposing(t) };
+  }
+  score(q, combined) {
+    const walletCount = Math.min(q.length / 8, 1);
+    const walletQuality = q.reduce((s, p) => s + Math.max(0, 1 - (p.rankAtJoin - 1) / this.config.maxRank), 0) / q.length;
+    const ratios = [];
+    for (const p of q) { const avg = this.config.getWallet(p.wallet)?.avgTradeUsd; if (avg > 0) ratios.push(Math.min(p.netUsd / avg / 3, 1)); }
+    const sizeVsHistory = ratios.length ? ratios.reduce((a, b) => a + b, 0) / ratios.length : null;
+    let dispersion = 1;
+    if (q.length > 1 && combined > 0) {
+      const h = q.reduce((s, p) => { const sh = p.netUsd / combined; return sh > 0 ? s - sh * Math.log(sh) : s; }, 0);
+      dispersion = h / Math.log(q.length);
+    }
+    return { walletCount, walletQuality, sizeVsHistory, dispersion };
+  }
+  opposing(t) {
+    const out = [];
+    for (const o of this.tokensByCondition.get(t.conditionId) ?? []) {
+      if (o === t.tokenId) continue;
+      const es = (this.buckets.get(o) ?? []).filter((e) => t.timestamp - e.trade.timestamp <= this.config.windowMs);
+      const ps = this.participants(es).filter((p) => p.netUsd > 0);
+      if (ps.length) out.push({ tokenId: o, outcome: es[0].trade.outcome, distinctWallets: ps.length,
+        combinedNetUsd: ps.reduce((s, p) => s + p.netUsd, 0), avgRank: ps.reduce((s, p) => s + p.rankAtJoin, 0) / ps.length, wallets: ps.map((p) => p.wallet) });
+    }
+    return out;
+  }
+}
+
+// ---------- state ----------
+const S = {
+  wallets: new Map(),     // addr -> {address, rank, name, pnl, volume, avgTradeUsd, lastActive, tradeCount}
+  trades: [],             // normalized, newest first
+  tradeKeys: new Set(),
+  cursors: new Map(),     // addr -> last seen ts (s)
+  events: new Map(),      // id -> event
+  alerts: store.get("alerts", []).slice(0, 200),
+  ready: false, loadingMsg: "Loading leaderboard…", engine: null, booted: Date.now()
+};
+const unread = () => S.alerts.filter((a) => !a.read).length;
+
+function normTrade(r) {
+  const shares = Number(r.size), price = Number(r.price);
+  return { transactionId: r.transaction_hash, wallet: (r.proxy_wallet || "").toLowerCase(), conditionId: r.condition_id, tokenId: r.token_id,
+    outcome: r.outcome_index === 999 ? "Unlabeled" : (r.outcome || "Unlabeled"), outcomeIndex: r.outcome_index, side: r.side, shares, price,
+    usdc: shares * price, timestamp: Number(r.timestamp) * 1000, title: r.title, slug: r.slug, eventSlug: r.event_slug, icon: r.icon };
+}
+function addTrades(list) {
+  const fresh = [];
+  for (const t of list) { const k = ConsensusEngine.key(t); if (S.tradeKeys.has(k)) continue; S.tradeKeys.add(k); fresh.push(t); }
+  if (fresh.length) { S.trades.push(...fresh); S.trades.sort((a, b) => b.timestamp - a.timestamp); }
+  return fresh;
+}
+function newEngine() {
+  return new ConsensusEngine({ windowMs: settings.windowMin * 60000, minWallets: settings.minWallets, minTradeUsd: settings.minTrade,
+    maxRank: settings.topN, getWallet: (a) => S.wallets.get(a) ?? null });
+}
+function feed(trades, live) {
+  const asc = [...trades].sort((a, b) => a.timestamp - b.timestamp);
+  for (const t of asc) {
+    const r = S.engine.process(t);
+    if (r.kind === "created") { S.events.set(r.event.id, r.event); alertFor(r.event, "new", live); }
+    else if (r.kind === "updated") { S.events.set(r.event.id, r.event); if (r.walletsJoined.length) alertFor(r.event, "joined", live, r.walletsJoined); }
+  }
+}
+function recompute() { S.engine = newEngine(); S.events.clear(); feed(S.trades, false); }
+
+function alertFor(ev, kind, live, joined = []) {
+  const key = ev.tokenId + "|" + ev.firstTradeAt;
+  let a = S.alerts.find((x) => x.key === key);
+  const title = `${ev.distinctWallets} top wallets bought ${ev.outcome}`;
+  const msg = kind === "joined" ? `${joined.map(wName).join(", ")} joined` : `Combined ${usdC(ev.combinedNetUsd)} within ${settings.windowMin} min`;
+  if (a) { Object.assign(a, { title, msg, eventId: ev.id, market: ev.title, wallets: ev.distinctWallets, volume: ev.combinedNetUsd, score: ev.score, at: ev.lastUpdated, updates: (a.updates || 0) + 1, read: live ? false : a.read }); }
+  else { a = { key, eventId: ev.id, title, msg, market: ev.title, outcome: ev.outcome, wallets: ev.distinctWallets, volume: ev.combinedNetUsd, score: ev.score, at: ev.lastUpdated, first: ev.firstTradeAt, read: !live, live, updates: 0 }; S.alerts.unshift(a); }
+  S.alerts.sort((x, y) => y.at - x.at); S.alerts = S.alerts.slice(0, 200); store.set("alerts", S.alerts);
+  if (live && settings.browserNotify && "Notification" in window && Notification.permission === "granted") {
+    try { new Notification(title, { body: `${ev.title}\n${msg}`, tag: key }); } catch {}
+  }
+}
+const wName = (a) => { const w = S.wallets.get(a); return w?.name ? w.name : short(a); };
+
+// ---------- data loading ----------
+async function loadLeaderboard() {
+  const rows = []; let cursor = null;
+  while (rows.length < settings.topN) {
+    const q = cursor ? `cursor=${encodeURIComponent(cursor)}` : `time_period=${settings.period}&sort_by=PNL&limit=${Math.min(100, settings.topN)}`;
+    const j = await api(`/leaderboard?${q}`);
+    rows.push(...(j.data || [])); cursor = j.pagination?.next_cursor; if (!cursor) break;
+  }
+  S.wallets.clear();
+  rows.slice(0, settings.topN).forEach((r) => S.wallets.set(r.user_id.toLowerCase(), { address: r.user_id.toLowerCase(), rank: r.rank, name: r.user_name || "",
+    pnl: r.pnl, volume: r.volume, x: r.x_username, verified: r.verified, avgTradeUsd: undefined, lastActive: null, tradeCount: 0 }));
+}
+async function fetchWalletTrades(addr, sinceSec) {
+  const out = []; let cursor = null; const base = `/trades?user=${addr}&start=${sinceSec}&limit=500`;
+  for (let page = 0; page < 6; page++) {
+    const j = await api(base + (cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""));
+    out.push(...(j.data || []).map(normTrade)); cursor = j.pagination?.next_cursor; if (!cursor) break;
+  }
+  return out;
+}
+function walletStatsFromTrades() {
+  for (const w of S.wallets.values()) { w.tradeCount = 0; w.lastActive = null; w.sum = 0; w.buys = 0; }
+  for (const t of S.trades) { const w = S.wallets.get(t.wallet); if (!w) continue; w.tradeCount++; w.lastActive = Math.max(w.lastActive || 0, t.timestamp);
+    if (t.side === "BUY") { w.sum += t.usdc; w.buys++; } }
+  for (const w of S.wallets.values()) w.avgTradeUsd = w.buys ? w.sum / w.buys : undefined;
+}
+async function boot() {
+  S.ready = false; S.trades = []; S.tradeKeys.clear(); S.events.clear(); S.cursors.clear();
+  try {
+    S.loadingMsg = "Loading leaderboard…"; render();
+    await loadLeaderboard();
+    const since = Math.floor(Date.now() / 1000) - settings.lookbackH * 3600;
+    let done = 0; const addrs = [...S.wallets.keys()];
+    await pool(addrs, 6, async (a) => {
+      const ts = await fetchWalletTrades(a, since); addTrades(ts);
+      S.cursors.set(a, ts.length ? Math.max(...ts.map((t) => t.timestamp / 1000)) : since);
+      done++; S.loadingMsg = `Loading trades… ${done}/${addrs.length} wallets`; if (done % 5 === 0) render();
+    });
+    walletStatsFromTrades(); recompute(); S.ready = true; render(); setStatus();
+  } catch (e) {
+    S.loadingMsg = "Couldn't load Polymarket data: " + e.message; render(); setStatus();
+  }
+}
+let polling = false;
+async function poll() {
+  if (!S.ready || polling || document.hidden) return; polling = true; health.syncing = true; const t0 = Date.now();
+  try {
+    const addrs = [...S.wallets.keys()]; const fresh = [];
+    await pool(addrs, 5, async (a) => {
+      const since = Math.floor(S.cursors.get(a) ?? Date.now() / 1000 - 3600) - 30; // small overlap; dedupe handles repeats
+      const ts = await fetchWalletTrades(a, since); const f = addTrades(ts); fresh.push(...f);
+      if (ts.length) S.cursors.set(a, Math.max(S.cursors.get(a) || 0, ...ts.map((t) => t.timestamp / 1000)));
+    });
+    // drop trades older than lookback to keep memory bounded
+    const cutoff = Date.now() - settings.lookbackH * 3600e3;
+    if (S.trades.length && S.trades[S.trades.length - 1].timestamp < cutoff) S.trades = S.trades.filter((t) => t.timestamp >= cutoff);
+    if (fresh.length) { walletStatsFromTrades(); feed(fresh, true); render(true); }
+  } finally { polling = false; health.syncing = false; health.lastCycleMs = Date.now() - t0; setStatus(); }
+}
+
+// ---------- status bar ----------
+function setStatus() {
+  const dot = $("#dot"), conn = $("#conn");
+  const stale = !health.lastSuccess || Date.now() - health.lastSuccess > 3 * 60e3;
+  if (!health.lastSuccess && health.failed) { dot.className = "dot err"; conn.textContent = "Data unavailable"; }
+  else if (!S.ready) { dot.className = "dot"; conn.textContent = "Loading…"; }
+  else if (stale) { dot.className = "dot delayed"; conn.textContent = "Delayed"; }
+  else { dot.className = "dot live"; conn.textContent = "Live"; }
+  $("#updated").textContent = health.lastSuccess ? "Updated " + new Date(health.lastSuccess).toLocaleTimeString() : "";
+  const n = unread(); const bc = $("#bellCount"); bc.textContent = n > 99 ? "99+" : n; bc.style.display = n ? "block" : "none";
+  const nb = document.querySelector('[data-badge="alerts"]'); if (nb) { nb.textContent = n; nb.style.display = n ? "" : "none"; }
+}
+
+// ---------- routing & nav ----------
+const ICON = {
+  overview: '<path d="M3 13h8V3H3zM13 21h8V11h-8zM3 21h8v-6H3zM13 3v6h8V3z"/>',
+  wallets: '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/>',
+  trades: '<path d="M7 7h13l-3-3M17 17H4l3 3"/>',
+  consensus: '<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20a6 6 0 0 1 12 0M14 20a5 5 0 0 1 7-4.5"/>',
+  alerts: '<path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21a2 2 0 0 0 4 0"/>',
+  markets: '<path d="M3 3v18h18M7 15l4-4 3 3 5-6"/>',
+  settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  status: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>'
+};
+const NAV = [["overview", "Overview"], ["wallets", "Top Wallets"], ["trades", "Trade Tracker"], ["consensus", "Consensus Signals"],
+  ["alerts", "Notifications"], ["markets", "Market Explorer"], ["settings", "Settings"], ["status", "System Status"]];
+function drawNav(active) {
+  $("#nav").innerHTML = NAV.map(([k, l]) => `<a href="#${k}" class="${k === active ? "active" : ""}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICON[k]}</svg><span class="lbl">${l}</span>${k === "alerts" ? '<span class="badge" data-badge="alerts" style="display:none"></span>' : ""}</a>`).join("");
+}
+const UI = { tradePage: 0, tradeSort: "timestamp", tradeDir: -1, tf: { wallet: "", market: "", side: "", min: "", outcome: "" },
+  walletSort: "rank", walletDir: 1, walletQ: "", consMin: 0, consSide: "", marketQ: "" };
+function route() { const h = location.hash.slice(1) || "overview"; const [p, ...rest] = h.split("/"); return { page: p, arg: decodeURIComponent(rest.join("/")) }; }
+function render(soft) {
+  const { page, arg } = route();
+  const navKey = page === "wallet" ? "wallets" : page === "event" ? "consensus" : page === "market" ? "markets" : page;
+  drawNav(navKey); setStatus();
+  if (soft && (document.activeElement?.closest?.("#view input, #view select"))) return; // don't clobber typing
+  const v = $("#view");
+  const views = { overview: vOverview, wallets: vWallets, trades: vTrades, consensus: vConsensus, event: vEvent, alerts: vAlerts,
+    markets: vMarkets, market: vMarket, wallet: vWallet, settings: vSettings, status: vStatus };
+  const fn = views[page] || vOverview;
+  if (!S.ready && !["settings", "status", "wallet"].includes(page)) {
+    v.innerHTML = `<h1>${esc(NAV.find((n) => n[0] === navKey)?.[1] || "Overview")}</h1><div class="loading"><span class="spinner"></span>${esc(S.loadingMsg)}</div>`; return;
+  }
+  v.innerHTML = fn(arg); bind(page, arg);
+}
+window.addEventListener("hashchange", () => { closePanel(); $("#app").classList.remove("drawer"); render(); window.scrollTo(0, 0); });
+
+// ---------- shared pieces ----------
+const wLink = (a) => { const w = S.wallets.get(a); return `<a href="#wallet/${a}">${esc(w?.name || short(a))}</a>${w ? ` <span class="mut">#${w.rank}</span>` : ""}`; };
+const mLink = (t) => `<a href="#market/${encodeURIComponent(t.conditionId)}" title="${esc(t.title)}">${esc(t.title)}</a>`;
+const side = (s) => `<span class="pill ${s === "BUY" ? "buy" : "sell"}">${s}</span>`;
+const outc = (o) => `<span class="pill out">${esc(o)}</span>`;
+function statCard(v, l, sub) { return `<div class="card stat"><div class="v num">${v}</div><div class="l">${l}</div><div class="t">${sub || (health.lastSuccess ? "Updated " + ago(health.lastSuccess) : "")}</div></div>`; }
+function consCard(e) {
+  const op = e.opposing.length ? ` · <span class="neg">${e.opposing.reduce((s, o) => s + o.distinctWallets, 0)} opposing</span>` : "";
+  return `<div class="cons"><div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap"><a class="t" href="#event/${e.id}">${esc(e.title)}</a>
+  <span>Bought ${outc(e.outcome)}</span></div>
+  <div class="row num"><span><b style="color:var(--text)">${e.distinctWallets}</b> wallets</span><span>${usdC(e.combinedNetUsd)} net</span>
+  <span>Avg rank #${Math.round(e.participants.reduce((s, p) => s + p.rankAtJoin, 0) / e.participants.length)}</span>
+  <span>${dt(e.firstTradeAt)} → ${dt(e.latestTradeAt)}</span><span>Score ${e.score}/100</span>${op}</div>
+  <div class="row">${e.participants.slice(0, 6).map((p) => esc(wName(p.wallet))).join(", ")}${e.participants.length > 6 ? ` +${e.participants.length - 6}` : ""}</div></div>`;
+}
+function tradeRow(t, i) {
+  return `<tr class="click" data-i="${i}"><td>${wLink(t.wallet)}</td><td class="mkt">${mLink(t)}</td><td>${outc(t.outcome)}</td><td>${side(t.side)}</td>
+  <td class="r num">${cents(t.price)}</td><td class="r num">${usd(t.usdc)}</td><td class="sec" title="${new Date(t.timestamp).toLocaleString()}">${ago(t.timestamp)}</td></tr>`;
+}
+const TRADE_HEAD = `<tr><th>Wallet</th><th>Market</th><th>Outcome</th><th>Action</th><th class="r">Price</th><th class="r">Amount</th><th>Time</th></tr>`;
+const eventsSorted = () => [...S.events.values()].sort((a, b) => b.lastUpdated - a.lastUpdated);
+const DISCLAIMER = `<div class="note">Consensus scores count how many of this tool's criteria an event meets (wallet count, wallet rank, size vs. the wallet's usual trades, how evenly volume is spread). They are <b>not</b> probabilities and wallet activity does not predict outcomes. Not financial advice.</div>`;
+
+// ---------- views ----------
+function vOverview() {
+  const day = Date.now() - 86400e3;
+  const tr = S.trades.filter((t) => t.timestamp >= day);
+  const active = new Set(tr.map((t) => t.wallet)).size;
+  const markets = new Set(tr.map((t) => t.conditionId)).size;
+  const vol = tr.reduce((s, t) => s + t.usdc, 0);
+  const evs = eventsSorted();
+  const strong = evs.filter((e) => e.distinctWallets >= 5).length;
+  return `<h1>Overview</h1><p class="desc">Live activity from the top ${settings.topN} wallets on Polymarket's ${settings.period} PnL leaderboard, over the last ${settings.lookbackH} hours.</p>
+  <div class="grid stats">
+    ${statCard(S.wallets.size, "Tracked wallets")}
+    ${statCard(active, "Active wallets (24h)")}
+    ${statCard(num(tr.length), "Trades detected (24h)")}
+    ${statCard(markets, "Markets traded (24h)")}
+    ${statCard(evs.length, "Consensus signals")}
+    ${statCard(strong, "High activity signals (5+ wallets)")}
+    ${statCard(usdC(vol), "Tracked wallet volume (24h, USDC)")}
+  </div>
+  ${DISCLAIMER}
+  <div class="grid two">
+    <div class="card"><h3>Recent wallet activity <a class="right" href="#trades">View all</a></h3><div class="tbl-wrap"><table><thead>${TRADE_HEAD}</thead><tbody id="ovTrades">
+      ${S.trades.slice(0, 15).map((t) => tradeRow(t, S.trades.indexOf(t))).join("") || `<tr><td colspan="7" class="empty">No trades from tracked wallets in this window.</td></tr>`}</tbody></table></div></div>
+    <div class="card"><h3>Recent consensus signals <a class="right" href="#consensus">View all</a></h3>
+      ${evs.slice(0, 6).map(consCard).join("") || `<div class="empty">No consensus yet: no ${settings.minWallets}+ tracked wallets bought the same outcome within ${settings.windowMin} min. Try a wider window in Settings.</div>`}</div>
+  </div>`;
+}
+
+function vWallets() {
+  let ws = [...S.wallets.values()];
+  if (UI.walletQ) { const q = UI.walletQ.toLowerCase(); ws = ws.filter((w) => w.address.includes(q) || (w.name || "").toLowerCase().includes(q)); }
+  const k = UI.walletSort, d = UI.walletDir; ws.sort((a, b) => ((a[k] ?? -Infinity) > (b[k] ?? -Infinity) ? 1 : -1) * d);
+  const th = (key, l, r) => `<th class="s ${r ? "r" : ""}" data-sort="${key}">${l}${UI.walletSort === key ? (UI.walletDir > 0 ? " ▲" : " ▼") : ""}</th>`;
+  const periodLbl = { day: "24h", week: "7d", month: "30d", all: "All-time" };
+  return `<h1>Top Wallets</h1><p class="desc">Ranked by Polymarket's official PnL leaderboard. Change how many wallets are tracked in Settings.</p>
+  <div class="note">${settings.period === "all" ? "All-time PnL is <b>realized only</b>." : `${periodLbl[settings.period]} PnL is Polymarket's <b>marked</b> equity change, so it includes unrealized gains and losses.`}
+  Volume is in <b>shares</b>, not dollars, as Polymarket reports it. Win rate and return on capital need full trade history, which comes with the database build.</div>
+  <div class="filters"><div class="seg" id="period">${["day", "week", "month", "all"].map((p) => `<button data-p="${p}" class="${settings.period === p ? "on" : ""}">${periodLbl[p]}</button>`).join("")}</div>
+  <input id="wq" placeholder="Search name or address" value="${esc(UI.walletQ)}"></div>
+  <div class="card"><div class="tbl-wrap"><table><thead><tr>${th("rank", "Rank")}<th>Wallet</th><th>Address</th>${th("pnl", "PnL (" + periodLbl[settings.period] + ")", 1)}${th("volume", "Volume (shares)", 1)}${th("tradeCount", "Trades (" + settings.lookbackH + "h)", 1)}${th("lastActive", "Last active")}<th></th></tr></thead>
+  <tbody>${ws.map((w) => `<tr><td class="num">#${w.rank}</td><td><a href="#wallet/${w.address}">${esc(w.name || "Unnamed")}</a>${w.verified ? ' <span title="Verified" class="pos">✓</span>' : ""}</td>
+  <td class="addr sec">${short(w.address)}</td><td class="r num">${pnl(w.pnl)}</td><td class="r num">${num(w.volume)}</td><td class="r num">${w.tradeCount}</td>
+  <td class="sec">${w.lastActive ? ago(w.lastActive) : "No trades in window"}</td><td><a href="https://polymarket.com/profile/${w.address}" target="_blank" rel="noopener">Polymarket ↗</a></td></tr>`).join("")
+  || `<tr><td colspan="8" class="empty">No wallets match.</td></tr>`}</tbody></table></div></div>`;
+}
+
+function filteredTrades() {
+  const f = UI.tf; let ts = S.trades;
+  if (f.wallet) { const q = f.wallet.toLowerCase(); ts = ts.filter((t) => t.wallet.includes(q) || (S.wallets.get(t.wallet)?.name || "").toLowerCase().includes(q)); }
+  if (f.market) { const q = f.market.toLowerCase(); ts = ts.filter((t) => (t.title || "").toLowerCase().includes(q)); }
+  if (f.outcome) { const q = f.outcome.toLowerCase(); ts = ts.filter((t) => t.outcome.toLowerCase().includes(q)); }
+  if (f.side) ts = ts.filter((t) => t.side === f.side);
+  if (f.min) ts = ts.filter((t) => t.usdc >= Number(f.min));
+  const k = UI.tradeSort, d = UI.tradeDir; return [...ts].sort((a, b) => (a[k] > b[k] ? 1 : -1) * d);
+}
+function vTrades() {
+  const ts = filteredTrades(), per = 50, pages = Math.max(1, Math.ceil(ts.length / per));
+  UI.tradePage = Math.min(UI.tradePage, pages - 1); const pg = ts.slice(UI.tradePage * per, UI.tradePage * per + per);
+  const f = UI.tf;
+  return `<h1>Trade Tracker</h1><p class="desc">Every trade from tracked wallets in the last ${settings.lookbackH} hours. New trades are checked about once a minute. Action (BUY/SELL) is the trade side; Outcome is the share bought or sold.</p>
+  <div class="filters">
+    <input data-f="wallet" placeholder="Wallet" value="${esc(f.wallet)}" size="14">
+    <input data-f="market" placeholder="Market" value="${esc(f.market)}" size="18">
+    <input data-f="outcome" placeholder="Outcome (e.g. Yes)" value="${esc(f.outcome)}" size="14">
+    <select data-f="side"><option value="">Buy & sell</option><option ${f.side === "BUY" ? "selected" : ""}>BUY</option><option ${f.side === "SELL" ? "selected" : ""}>SELL</option></select>
+    <input data-f="min" type="number" min="0" placeholder="Min $" value="${esc(f.min)}" style="width:90px">
+    <select id="tsort"><option value="timestamp:-1">Newest</option><option value="timestamp:1">Oldest</option><option value="usdc:-1">Largest</option><option value="usdc:1">Smallest</option></select>
+    <button class="btn" id="clearF">Clear filters</button><span class="sec num">${num(ts.length)} trades</span></div>
+  <div class="card"><div class="tbl-wrap"><table><thead>${TRADE_HEAD}</thead><tbody>${pg.map((t) => tradeRow(t, S.trades.indexOf(t))).join("") || `<tr><td colspan="7" class="empty">No trades match these filters.</td></tr>`}</tbody></table></div>
+  <div class="pager"><button class="btn" id="prev" ${UI.tradePage ? "" : "disabled"}>‹ Prev</button>Page ${UI.tradePage + 1} of ${pages}<button class="btn" id="next" ${UI.tradePage < pages - 1 ? "" : "disabled"}>Next ›</button></div></div>`;
+}
+
+function vConsensus() {
+  let evs = eventsSorted();
+  if (UI.consMin) evs = evs.filter((e) => e.distinctWallets >= UI.consMin);
+  if (UI.consSide) evs = evs.filter((e) => e.outcome.toLowerCase() === UI.consSide);
+  const lvl = (n) => n >= 8 ? "Very high" : n >= 5 ? "High" : n >= 3 ? "Moderate" : "Low";
+  return `<h1>Consensus Signals</h1><p class="desc">Times when ${settings.minWallets}+ tracked wallets bought the same outcome of the same market within ${settings.windowMin} minutes. Each wallet counts once; wallets that sold back out are removed.</p>
+  ${DISCLAIMER}
+  <div class="filters"><div class="seg" id="cmin">${[[0, "All"], [3, "3+"], [5, "5+"], [8, "8+"]].map(([n, l]) => `<button data-n="${n}" class="${UI.consMin === n ? "on" : ""}">${l} wallets</button>`).join("")}</div>
+  <div class="seg" id="cside">${[["", "Any outcome"], ["yes", "Yes"], ["no", "No"]].map(([s, l]) => `<button data-s="${s}" class="${UI.consSide === s ? "on" : ""}">${l}</button>`).join("")}</div></div>
+  <div class="card"><div class="tbl-wrap"><table><thead><tr><th>Market</th><th>Outcome</th><th class="r">Wallets</th><th class="r">Net volume</th><th class="r">Avg rank</th><th>First trade</th><th>Latest</th><th>Activity</th><th>Score</th><th>Opposing</th></tr></thead><tbody>
+  ${evs.map((e) => `<tr class="click" onclick="location.hash='event/${e.id}'"><td class="mkt"><a href="#event/${e.id}">${esc(e.title)}</a></td><td>${outc(e.outcome)}</td>
+  <td class="r num">${e.distinctWallets}</td><td class="r num">${usd(e.combinedNetUsd)}</td><td class="r num">#${Math.round(e.participants.reduce((s, p) => s + p.rankAtJoin, 0) / e.distinctWallets)}</td>
+  <td class="sec">${dt(e.firstTradeAt)}</td><td class="sec">${ago(e.latestTradeAt)}</td><td>${lvl(e.distinctWallets)}</td>
+  <td><span class="bar"><i style="width:${e.score}%"></i></span> <span class="num">${e.score}</span></td>
+  <td>${e.opposing.length ? `<span class="neg">${e.opposing.map((o) => o.distinctWallets + " on " + esc(o.outcome)).join(", ")}</span>` : '<span class="mut">None</span>'}</td></tr>`).join("")
+  || `<tr><td colspan="10" class="empty">No signals match. Signals appear when ${settings.minWallets}+ tracked wallets buy the same outcome within ${settings.windowMin} min.</td></tr>`}</tbody></table></div></div>`;
+}
+
+function vEvent(id) {
+  const e = S.events.get(id);
+  if (!e) return `<h1>Consensus report</h1><div class="empty">This signal isn't in the current data window. It may have aged out, or the page was reloaded with different settings. <a href="#consensus">Back to signals</a></div>`;
+  const c = e.components; const pct = (x) => x == null ? '<span class="mut">No history</span>' : Math.round(x * 100) + "%";
+  const tl = e.participants.flatMap((p) => p.trades).sort((a, b) => a.timestamp - b.timestamp);
+  const mktTrades = S.trades.filter((t) => t.conditionId === e.conditionId && !tl.includes(t)).slice(0, 20);
+  return `<p class="desc"><a href="#consensus">← Consensus Signals</a></p><h1>${esc(e.title)}</h1>
+  <p class="desc">${e.distinctWallets} tracked wallets bought ${outc(e.outcome)} between ${dt(e.firstTradeAt)} and ${dt(e.latestTradeAt)}. ${e.slug ? `<a href="https://polymarket.com/event/${esc(e.slug)}" target="_blank" rel="noopener">Open on Polymarket ↗</a>` : ""}</p>
+  ${DISCLAIMER}
+  <div class="grid stats">${statCard(e.distinctWallets, "Distinct wallets")}${statCard(usdC(e.combinedNetUsd), "Net buying (USDC)")}${statCard(e.score + "/100", "Criteria score")}
+  ${statCard(Math.round((e.latestTradeAt - e.firstTradeAt) / 60000) + " min", "Time span")}</div>
+  <div class="grid two">
+   <div class="card"><h3>Participating wallets</h3><div class="tbl-wrap"><table><thead><tr><th>Wallet</th><th class="r">Rank</th><th class="r">Bought</th><th class="r">Sold</th><th class="r">Net</th><th>First</th><th class="r">Trades</th></tr></thead><tbody>
+   ${e.participants.map((p) => `<tr><td>${wLink(p.wallet)}</td><td class="r num">#${p.rankAtJoin}</td><td class="r num">${usd(p.boughtUsd)}</td><td class="r num">${usd(p.soldUsd)}</td><td class="r num pos">${usd(p.netUsd)}</td><td class="sec">${dt(p.firstTradeAt)}</td><td class="r num">${p.trades.length}</td></tr>`).join("")}</tbody></table></div></div>
+   <div class="card"><h3>Score components</h3>
+   <table><tbody><tr><td>Wallet count (8+ = full)</td><td class="r num">${pct(c.walletCount)}</td><td class="mut r">40%</td></tr>
+   <tr><td>Wallet rank quality</td><td class="r num">${pct(c.walletQuality)}</td><td class="mut r">30%</td></tr>
+   <tr><td>Size vs. wallet's usual buy</td><td class="r num">${pct(c.sizeVsHistory)}</td><td class="mut r">15%</td></tr>
+   <tr><td>Volume spread across wallets</td><td class="r num">${pct(c.dispersion)}</td><td class="mut r">15%</td></tr></tbody></table>
+   <h3 style="margin-top:18px">Opposing activity</h3>
+   ${e.opposing.length ? e.opposing.map((o) => `<div class="cons" style="border-left-color:var(--red)"><b>${o.distinctWallets} wallets</b> bought ${outc(o.outcome)} · ${usdC(o.combinedNetUsd)} net · avg rank #${Math.round(o.avgRank)}<div class="row">${o.wallets.map((w) => esc(wName(w))).join(", ")}</div></div>`).join("")
+     + `<p class="sec" style="font-size:12px">Both groups are shown as-is. The larger group is not necessarily right.</p>` : `<p class="mut">No tracked wallets bought another outcome of this market in the same window.</p>`}
+   </div></div>
+  <div class="card" style="margin-top:14px"><h3>Timeline</h3><div class="timeline">
+   ${tl.map((t) => `<div class="ev ${t.side === "SELL" ? "sell" : ""}"><span class="sec num">${dt(t.timestamp)}</span> · ${wLink(t.wallet)} ${side(t.side)} ${outc(t.outcome)} <span class="num">${usd(t.usdc)} @ ${cents(t.price)}</span></div>`).join("")}</div></div>
+  ${mktTrades.length ? `<div class="card" style="margin-top:14px"><h3>Other tracked activity on this market</h3><div class="tbl-wrap"><table><thead>${TRADE_HEAD}</thead><tbody>${mktTrades.map((t) => tradeRow(t, S.trades.indexOf(t))).join("")}</tbody></table></div></div>` : ""}`;
+}
+
+function vAlerts() {
+  const can = "Notification" in window;
+  return `<h1>Notifications</h1><p class="desc">One alert per consensus event. When more wallets join an event, its alert updates instead of creating a duplicate. Alerts detected while you weren't watching are marked read.</p>
+  <div class="filters"><button class="btn" id="markAll">Mark all read</button><button class="btn" id="clearAlerts">Clear all</button>
+  ${can ? `<button class="btn ${settings.browserNotify && Notification.permission === "granted" ? "primary" : ""}" id="bn">${settings.browserNotify && Notification.permission === "granted" ? "Browser alerts on" : "Turn on browser alerts"}</button>` : ""}</div>
+  <div class="card">${S.alerts.map((a) => `<div class="feed"><div class="item" style="${a.read ? "" : "border-left:3px solid var(--green2);padding-left:10px"}">
+   <div><b>${esc(a.title)}</b> <span class="sec">on</span> ${esc(a.market)}<div class="meta">${esc(a.msg)} · ${a.wallets} wallets · ${usdC(a.volume)} · score ${a.score}${a.updates ? ` · updated ${a.updates}×` : ""}</div></div>
+   <div class="meta" style="text-align:right">${ago(a.at)}<br>${S.events.has(a.eventId) ? `<a href="#event/${a.eventId}" data-read="${esc(a.key)}">View details</a>` : '<span class="mut">Expired</span>'}</div></div></div>`).join("")
+   || `<div class="empty">No alerts yet.</div>`}</div>`;
+}
+
+function marketGroups() {
+  const m = new Map();
+  for (const t of S.trades) {
+    let g = m.get(t.conditionId); if (!g) { g = { conditionId: t.conditionId, title: t.title, slug: t.eventSlug, wallets: new Set(), vol: 0, n: 0, last: 0, outcomes: new Map() }; m.set(t.conditionId, g); }
+    g.wallets.add(t.wallet); g.vol += t.usdc; g.n++; g.last = Math.max(g.last, t.timestamp);
+    const o = g.outcomes.get(t.outcome) || { buy: 0, sell: 0, price: t.price, at: 0 }; if (t.side === "BUY") o.buy += t.usdc; else o.sell += t.usdc;
+    if (t.timestamp > o.at) { o.at = t.timestamp; o.price = t.price; } g.outcomes.set(t.outcome, o);
+  }
+  return [...m.values()];
+}
+function vMarkets() {
+  let ms = marketGroups().sort((a, b) => b.wallets.size - a.wallets.size || b.vol - a.vol);
+  if (UI.marketQ) { const q = UI.marketQ.toLowerCase(); ms = ms.filter((m) => (m.title || "").toLowerCase().includes(q)); }
+  return `<h1>Market Explorer</h1><p class="desc">Markets where tracked wallets traded in the last ${settings.lookbackH} hours, ranked by how many tracked wallets took part. "Net lean" is tracked buying minus selling per outcome. It describes activity, not where the market will go.</p>
+  <div class="filters"><input id="mq" placeholder="Search markets" value="${esc(UI.marketQ)}" size="30"><span class="sec">${ms.length} markets</span></div>
+  <div class="card"><div class="tbl-wrap"><table><thead><tr><th>Market</th><th class="r">Tracked wallets</th><th class="r">Tracked volume</th><th class="r">Trades</th><th>Net lean</th><th>Last trade</th></tr></thead><tbody>
+  ${ms.slice(0, 200).map((m) => { const lean = [...m.outcomes.entries()].map(([o, v]) => [o, v.buy - v.sell]).sort((a, b) => b[1] - a[1])[0];
+    return `<tr class="click" onclick="location.hash='market/${encodeURIComponent(m.conditionId)}'"><td class="mkt"><a href="#market/${encodeURIComponent(m.conditionId)}">${esc(m.title)}</a></td><td class="r num">${m.wallets.size}</td><td class="r num">${usd(m.vol)}</td><td class="r num">${m.n}</td>
+    <td>${lean && lean[1] > 0 ? `${outc(lean[0])} <span class="num pos">+${usdC(lean[1])}</span>` : '<span class="mut">Net selling</span>'}</td><td class="sec">${ago(m.last)}</td></tr>`; }).join("")
+  || `<tr><td colspan="6" class="empty">No markets match.</td></tr>`}</tbody></table></div></div>`;
+}
+function vMarket(cid) {
+  const g = marketGroups().find((m) => m.conditionId === cid);
+  if (!g) return `<h1>Market</h1><div class="empty">No tracked activity on this market in the current window. <a href="#markets">Back</a></div>`;
+  const ts = S.trades.filter((t) => t.conditionId === cid);
+  const evs = eventsSorted().filter((e) => e.conditionId === cid);
+  return `<p class="desc"><a href="#markets">← Market Explorer</a></p><h1>${esc(g.title)}</h1>
+  <p class="desc">${g.slug ? `<a href="https://polymarket.com/event/${esc(g.slug)}" target="_blank" rel="noopener">Open on Polymarket ↗</a> · ` : ""}<span class="addr mut">${esc(cid)}</span></p>
+  <div class="grid stats">${statCard(g.wallets.size, "Tracked wallets")}${statCard(usdC(g.vol), "Tracked volume")}${statCard(g.n, "Trades")}${statCard(evs.length, "Consensus signals")}</div>
+  <div class="card" style="margin-bottom:14px"><h3>By outcome</h3><table><thead><tr><th>Outcome</th><th class="r">Tracked buying</th><th class="r">Tracked selling</th><th class="r">Last traded price</th></tr></thead><tbody>
+  ${[...g.outcomes.entries()].map(([o, v]) => `<tr><td>${outc(o)}</td><td class="r num pos">${usd(v.buy)}</td><td class="r num neg">${usd(v.sell)}</td><td class="r num">${cents(v.price)} <span class="mut">(${ago(v.at)})</span></td></tr>`).join("")}</tbody></table></div>
+  ${evs.length ? `<div class="card" style="margin-bottom:14px"><h3>Consensus signals</h3>${evs.map(consCard).join("")}</div>` : ""}
+  <div class="card"><h3>Tracked trades</h3><div class="tbl-wrap"><table><thead>${TRADE_HEAD}</thead><tbody>${ts.map((t) => tradeRow(t, S.trades.indexOf(t))).join("")}</tbody></table></div></div>`;
+}
+
+const walletCache = new Map();
+function vWallet(addr) {
+  addr = (addr || "").toLowerCase();
+  if (!/^0x[0-9a-f]{40}$/.test(addr)) return `<h1>Wallet</h1><div class="empty">That isn't a valid wallet address (0x followed by 40 hex characters).</div>`;
+  const w = S.wallets.get(addr); const c = walletCache.get(addr);
+  if (!c) { loadWallet(addr); }
+  const pos = c?.positions; const tr = c?.trades;
+  const val = pos ? pos.reduce((s, p) => s + (p.current_value || 0), 0) : null;
+  const unr = pos ? pos.reduce((s, p) => s + (p.unrealized_pnl || 0), 0) : null;
+  return `<p class="desc"><a href="#wallets">← Top Wallets</a></p><h1>${esc(w?.name || c?.name || "Wallet")} ${w ? `<span class="mut" style="font-size:18px">#${w.rank}</span>` : ""}</h1>
+  <p class="desc"><span class="addr">${addr}</span> <button class="btn" id="copy" style="padding:2px 8px;font-size:12px">Copy</button> · <a href="https://polymarket.com/profile/${addr}" target="_blank" rel="noopener">Polymarket profile ↗</a> · <a href="https://polygonscan.com/address/${addr}" target="_blank" rel="noopener">Polygonscan ↗</a>
+  ${w ? "" : ` · <span class="mut">Not in the tracked top ${settings.topN}</span>`}</p>
+  <div class="grid stats">
+   ${statCard(w ? pnl(w.pnl) : usd(null), `Leaderboard PnL (${settings.period})`)}
+   ${statCard(w ? num(w.volume) : usd(null), "Leaderboard volume (shares)")}
+   ${statCard(pos ? pos.length + (c.posMore ? "+" : "") : "…", "Open positions")}
+   ${statCard(pos ? usdC(val) : "…", "Open position value", c?.posMore ? "Top 100 positions by value" : "")}
+   ${statCard(pos ? pnl(unr) : "…", "Unrealized PnL (open positions)")}
+   ${statCard(tr ? (tr[0] ? ago(tr[0].timestamp) : "None") : "…", "Last trade")}
+  </div>
+  <div class="card" style="margin-bottom:14px"><h3>Open positions ${c?.err ? `<span class="neg right">${esc(c.err)}</span>` : ""}</h3>
+  ${!c ? `<div class="loading"><span class="spinner"></span>Loading positions…</div>` : `<div class="tbl-wrap"><table><thead><tr><th>Market</th><th>Outcome</th><th class="r">Shares</th><th class="r">Avg entry</th><th class="r">Current</th><th class="r">Value</th><th class="r">Unrealized</th><th class="r">Realized</th></tr></thead><tbody>
+  ${(pos || []).map((p) => `<tr><td class="mkt">${p.slug ? `<a href="https://polymarket.com/market/${esc(p.slug)}" target="_blank" rel="noopener">${esc(p.title)}</a>` : esc(p.title)}</td><td>${outc(p.outcome ?? "Unavailable")}</td>
+   <td class="r num">${num(p.current_size)}</td><td class="r num">${cents(p.avg_price)}</td><td class="r num">${cents(p.current_price)}</td><td class="r num">${usd(p.current_value)}</td><td class="r num">${pnl(p.unrealized_pnl)}</td><td class="r num">${pnl(p.realized_pnl)}</td></tr>`).join("")
+   || `<tr><td colspan="8" class="empty">No open positions.</td></tr>`}</tbody></table></div>`}</div>
+  <div class="card"><h3>Recent trades <span class="right sec">Last 30 days, up to 500</span></h3>
+  ${!c ? `<div class="loading"><span class="spinner"></span>Loading trades…</div>` : `<div class="tbl-wrap"><table><thead><tr><th>Market</th><th>Outcome</th><th>Action</th><th class="r">Shares</th><th class="r">Price</th><th class="r">Amount</th><th>Time</th></tr></thead><tbody>
+  ${(tr || []).map((t) => `<tr><td class="mkt"><a href="#market/${encodeURIComponent(t.conditionId)}">${esc(t.title)}</a></td><td>${outc(t.outcome)}</td><td>${side(t.side)}</td><td class="r num">${num(t.shares)}</td><td class="r num">${cents(t.price)}</td><td class="r num">${usd(t.usdc)}</td><td class="sec" title="${new Date(t.timestamp).toLocaleString()}">${dt(t.timestamp)}</td></tr>`).join("")
+  || `<tr><td colspan="7" class="empty">No trades in the last 30 days.</td></tr>`}</tbody></table></div>`}</div>`;
+}
+async function loadWallet(addr) {
+  walletCache.set(addr, null);
+  const c = { positions: null, trades: null };
+  try {
+    const [p, t] = await Promise.all([api(`/positions?user=${addr}&limit=100`), api(`/trades?user=${addr}&start=${Math.floor(Date.now() / 1000) - 30 * 86400}&limit=500`)]);
+    c.positions = (p.data || []).filter((x) => x.status !== "CLOSED"); c.posMore = !!p.pagination?.has_more;
+    c.trades = (t.data || []).map(normTrade).sort((a, b) => b.timestamp - a.timestamp); c.name = t.data?.[0]?.name;
+  } catch (e) { c.positions = c.positions || []; c.trades = c.trades || []; c.err = "Couldn't load: " + e.message; }
+  walletCache.set(addr, c);
+  if (route().page === "wallet" && route().arg.toLowerCase() === addr) render();
+}
+
+function vSettings() {
+  const s = settings;
+  return `<h1>Settings</h1><p class="desc">Saved in this browser. Changing tracked wallets, leaderboard period or lookback reloads the data. Consensus settings re-run detection instantly.</p>
+  <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">
+   <div class="card"><h3>Consensus rules</h3><div class="grid">
+    <label class="f">Minimum distinct wallets<input class="set" data-k="minWallets" type="number" min="2" max="20" value="${s.minWallets}"></label>
+    <label class="f">Time window<select class="set" data-k="windowMin">${[5, 15, 30, 60, 180, 360, 720, 1440].map((m) => `<option value="${m}" ${s.windowMin === m ? "selected" : ""}>${m < 60 ? m + " minutes" : m / 60 + (m === 60 ? " hour" : " hours")}</option>`).join("")}</select></label>
+    <label class="f">Minimum buy size (USDC)<input class="set" data-k="minTrade" type="number" min="0" step="50" value="${s.minTrade}"></label></div></div>
+   <div class="card"><h3>Tracked wallets</h3><div class="grid">
+    <label class="f">Track the top<select class="set" data-k="topN" data-reload="1">${[20, 50, 100, 200].map((n) => `<option value="${n}" ${s.topN === n ? "selected" : ""}>${n} wallets</option>`).join("")}</select></label>
+    <label class="f">Rank wallets by PnL over<select class="set" data-k="period" data-reload="1" data-str="1">${[["day", "24 hours"], ["week", "7 days"], ["month", "30 days"], ["all", "All time (realized)"]].map(([v, l]) => `<option value="${v}" ${s.period === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+    <label class="f">Trade lookback<select class="set" data-k="lookbackH" data-reload="1">${[6, 12, 24, 48].map((h) => `<option value="${h}" ${s.lookbackH === h ? "selected" : ""}>${h} hours</option>`).join("")}</select></label></div></div>
+  </div>
+  <p class="sec" style="margin-top:16px">Tracking more wallets or a longer lookback takes longer to load and makes more requests to Polymarket.</p>
+  <button class="btn" id="resetS">Reset to defaults</button>`;
+}
+
+function vStatus() {
+  return `<h1>System Status</h1><p class="desc">Health of the live data connection in this browser tab.</p>
+  <div class="grid stats">${statCard(health.lastSuccess ? ago(health.lastSuccess) : "Never", "Last successful request", health.lastSuccess ? new Date(health.lastSuccess).toLocaleTimeString() : " ")}
+  ${statCard(num(health.ok), "Successful requests")}${statCard(num(health.failed), "Failed requests (after retries)")}
+  ${statCard(health.lastCycleMs != null ? (health.lastCycleMs / 1000).toFixed(1) + "s" : "—", "Last sync cycle")}
+  ${statCard(S.ready ? "Running" : "Loading", "Sync worker", health.syncing ? "Syncing now" : "Checks every 60s while this tab is open")}</div>
+  <div class="card"><h3>Data sources</h3><table><tbody>
+   <tr><td>Polymarket Data API v2</td><td class="sec">Leaderboard, trades, positions</td><td>${health.lastSuccess && Date.now() - health.lastSuccess < 180e3 ? '<span class="pos">Connected</span>' : '<span class="neg">Delayed or down</span>'}</td></tr>
+   <tr><td>Database (Supabase)</td><td class="sec">History, win rates, accounts</td><td class="mut">Not set up yet. This preview keeps data in memory.</td></tr></tbody></table>
+  <h3 style="margin-top:16px">Recent errors</h3>${health.errors.map((e) => `<div class="sec"><span class="num">${new Date(e.at).toLocaleTimeString()}</span> · ${esc(e.msg)}</div>`).join("") || '<div class="mut">None</div>'}</div>`;
+}
+
+// ---------- trade detail panel ----------
+function openTrade(t) {
+  const others = S.trades.filter((x) => x.conditionId === t.conditionId && x.wallet !== t.wallet);
+  const ow = [...new Set(others.map((x) => x.wallet))];
+  const same = S.trades.filter((x) => x.wallet === t.wallet && x.conditionId === t.conditionId && x !== t);
+  $("#panel").innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><h2>Trade details</h2><button class="btn" id="closeP">Close</button></div>
+  <p style="margin:14px 0 4px;font-weight:600">${esc(t.title)}</p><p class="desc">${t.eventSlug ? `<a href="https://polymarket.com/event/${esc(t.eventSlug)}" target="_blank" rel="noopener">Polymarket ↗</a> · ` : ""}<a href="#market/${encodeURIComponent(t.conditionId)}">Tracked activity on this market</a></p>
+  <div class="kv card"><div><small>Wallet</small>${wLink(t.wallet)}</div><div><small>Action</small>${side(t.side)}</div><div><small>Outcome</small>${outc(t.outcome)}</div>
+  <div><small>Shares</small><b class="num">${num(t.shares)}</b></div><div><small>Price</small><b class="num">${cents(t.price)}</b></div><div><small>Amount</small><b class="num">${usd(t.usdc, 2)}</b></div>
+  <div><small>Time</small><b>${new Date(t.timestamp).toLocaleString()}</b></div><div><small>Status</small><b>Confirmed</b></div><div><small>Source</small><b>Data API v2</b></div>
+  <div style="grid-column:1/-1"><small>Transaction</small><a class="addr" href="https://polygonscan.com/tx/${esc(t.transactionId)}" target="_blank" rel="noopener">${esc(short(t.transactionId))} ↗</a></div></div>
+  <h3 style="margin:18px 0 8px;font-size:14px">This wallet's other trades here (${same.length})</h3>
+  ${same.slice(0, 10).map((x) => `<div class="sec">${dt(x.timestamp)} · ${side(x.side)} ${outc(x.outcome)} ${usd(x.usdc)} @ ${cents(x.price)}</div>`).join("") || '<div class="mut">None in window</div>'}
+  <h3 style="margin:18px 0 8px;font-size:14px">Other tracked wallets on this market (${ow.length})</h3>
+  ${ow.slice(0, 15).map((a) => { const xs = others.filter((x) => x.wallet === a); const net = xs.reduce((s, x) => s + (x.side === "BUY" ? x.usdc : -x.usdc), 0);
+     return `<div class="sec">${wLink(a)} · ${xs.length} trades · ${[...new Set(xs.map((x) => x.outcome))].map(esc).join("/")} · net ${pnl(net)}</div>`; }).join("") || '<div class="mut">None in window</div>'}`;
+  $("#panel").classList.add("open"); $("#scrim").classList.add("open"); $("#closeP").onclick = closePanel;
+}
+function closePanel() { $("#panel").classList.remove("open"); $("#scrim").classList.remove("open"); }
+$("#scrim").onclick = closePanel;
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closePanel(); $("#results").style.display = "none"; } });
+
+// ---------- event binding ----------
+function bind(page) {
+  document.querySelectorAll("tr.click[data-i]").forEach((tr) => tr.addEventListener("click", (e) => { if (e.target.closest("a")) return; openTrade(S.trades[+tr.dataset.i]); }));
+  if (page === "wallets") {
+    document.querySelectorAll("th[data-sort]").forEach((th) => th.onclick = () => { const k = th.dataset.sort; UI.walletDir = UI.walletSort === k ? -UI.walletDir : (k === "rank" ? 1 : -1); UI.walletSort = k; render(); });
+    $("#wq").oninput = (e) => { UI.walletQ = e.target.value; const p = e.target.selectionStart; render(); const i = $("#wq"); i.focus(); i.setSelectionRange(p, p); };
+    document.querySelectorAll("#period button").forEach((b) => b.onclick = () => { settings.period = b.dataset.p; store.set("settings", settings); boot(); });
+  }
+  if (page === "trades") {
+    document.querySelectorAll("[data-f]").forEach((el) => el[el.tagName === "SELECT" ? "onchange" : "oninput"] = () => {
+      UI.tf[el.dataset.f] = el.value; UI.tradePage = 0; const sel = el.tagName === "INPUT" ? [el.dataset.f, el.selectionStart] : null; render();
+      if (sel) { const i = document.querySelector(`[data-f="${sel[0]}"]`); i.focus(); try { i.setSelectionRange(sel[1], sel[1]); } catch {} } });
+    $("#tsort").value = UI.tradeSort + ":" + UI.tradeDir;
+    $("#tsort").onchange = (e) => { const [k, d] = e.target.value.split(":"); UI.tradeSort = k; UI.tradeDir = +d; render(); };
+    $("#clearF").onclick = () => { UI.tf = { wallet: "", market: "", side: "", min: "", outcome: "" }; UI.tradePage = 0; render(); };
+    $("#prev").onclick = () => { UI.tradePage--; render(); }; $("#next").onclick = () => { UI.tradePage++; render(); };
+  }
+  if (page === "consensus") {
+    document.querySelectorAll("#cmin button").forEach((b) => b.onclick = () => { UI.consMin = +b.dataset.n; render(); });
+    document.querySelectorAll("#cside button").forEach((b) => b.onclick = () => { UI.consSide = b.dataset.s; render(); });
+  }
+  if (page === "markets") $("#mq").oninput = (e) => { UI.marketQ = e.target.value; const p = e.target.selectionStart; render(); const i = $("#mq"); i.focus(); i.setSelectionRange(p, p); };
+  if (page === "alerts") {
+    $("#markAll").onclick = () => { S.alerts.forEach((a) => a.read = true); store.set("alerts", S.alerts); render(); };
+    $("#clearAlerts").onclick = () => { S.alerts = []; store.set("alerts", S.alerts); render(); };
+    document.querySelectorAll("[data-read]").forEach((a) => a.addEventListener("click", () => { const x = S.alerts.find((y) => y.key === a.dataset.read); if (x) { x.read = true; store.set("alerts", S.alerts); } }));
+    const bn = $("#bn"); if (bn) bn.onclick = async () => {
+      if (settings.browserNotify && Notification.permission === "granted") settings.browserNotify = false;
+      else { const p = await Notification.requestPermission(); settings.browserNotify = p === "granted"; if (p !== "granted") alert("Browser notifications were blocked. You can allow them in your browser's site settings."); }
+      store.set("settings", settings); render(); };
+  }
+  if (page === "wallet") { const c = $("#copy"); if (c) c.onclick = () => { navigator.clipboard?.writeText(route().arg); c.textContent = "Copied"; }; }
+  if (page === "settings") {
+    document.querySelectorAll(".set").forEach((el) => el.onchange = () => {
+      const k = el.dataset.k; let v = el.dataset.str ? el.value : Number(el.value);
+      if (k === "minWallets") v = Math.max(2, Math.min(20, v || 2)); if (k === "minTrade") v = Math.max(0, v || 0);
+      settings[k] = v; store.set("settings", settings);
+      if (el.dataset.reload) boot(); else { if (S.ready) recompute(); render(); }
+    });
+    $("#resetS").onclick = () => { settings = { ...DEFAULTS }; store.set("settings", settings); boot(); location.hash = "settings"; };
+  }
+}
+
+// ---------- global search ----------
+$("#q").addEventListener("input", (e) => {
+  const q = e.target.value.trim().toLowerCase(); const box = $("#results");
+  if (!q) { box.style.display = "none"; return; }
+  const out = [];
+  if (/^0x[0-9a-f]{40}$/.test(q)) out.push(`<a href="#wallet/${q}">Open wallet ${short(q)}<small>Look up any public address</small></a>`);
+  if (/^0x[0-9a-f]{64}$/.test(q)) { const t = S.trades.find((x) => x.transactionId?.toLowerCase() === q); if (t) out.push(`<a href="#" data-tx="${S.trades.indexOf(t)}">Transaction ${short(q)}<small>${esc(t.title)}</small></a>`); }
+  for (const w of S.wallets.values()) if (w.address.includes(q) || (w.name || "").toLowerCase().includes(q)) { out.push(`<a href="#wallet/${w.address}">${esc(w.name || short(w.address))} <span class="mut">#${w.rank}</span><small class="addr">${w.address}</small></a>`); if (out.length > 8) break; }
+  const seen = new Set();
+  for (const t of S.trades) { if (seen.size >= 8) break; if (!seen.has(t.conditionId) && (t.title || "").toLowerCase().includes(q)) { seen.add(t.conditionId); out.push(`<a href="#market/${encodeURIComponent(t.conditionId)}">${esc(t.title)}<small>Market</small></a>`); } }
+  box.innerHTML = out.join("") || `<div class="empty">No matches. Paste a full 0x address to look up any wallet.</div>`; box.style.display = "block";
+  box.querySelectorAll("[data-tx]").forEach((a) => a.onclick = (ev) => { ev.preventDefault(); openTrade(S.trades[+a.dataset.tx]); box.style.display = "none"; });
+});
+$("#q").addEventListener("keydown", (e) => { if (e.key === "Enter") { const a = $("#results a"); if (a) a.click(); } });
+document.addEventListener("click", (e) => { if (!e.target.closest(".search")) $("#results").style.display = "none"; else if (e.target.closest("#results a")) { $("#results").style.display = "none"; $("#q").value = ""; } });
+$("#bell").onclick = () => { location.hash = "alerts"; };
+$("#menu").onclick = () => $("#app").classList.toggle("drawer");
+$("#collapse").onclick = () => { $("#app").classList.toggle("collapsed"); store.set("collapsed", $("#app").classList.contains("collapsed")); };
+if (store.get("collapsed", false)) $("#app").classList.add("collapsed");
+document.addEventListener("click", (e) => { if ($("#app").classList.contains("drawer") && !e.target.closest(".side") && !e.target.closest("#menu")) $("#app").classList.remove("drawer"); });
+
+// ---------- start ----------
+render(); boot();
+setInterval(poll, 60e3);
+setInterval(() => { setStatus(); const { page } = route(); if (S.ready && ["overview", "consensus", "status"].includes(page)) render(true); }, 30e3);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
+</script>
+</body>
+</html>

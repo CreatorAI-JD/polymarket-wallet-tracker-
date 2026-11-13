@@ -4,6 +4,9 @@ Read-only platform that ranks high-performing Polymarket wallets, tracks their t
 
 Not financial advice. Consensus scores measure how many of the platform's criteria an event meets — they are not probabilities of an outcome.
 
+## Live preview
+https://creatorai-jd.github.io/polymarket-wallet-tracker-/ — a no-server version (`docs/index.html`) that runs on real Polymarket data in the browser: leaderboard, trade tracker, consensus signals, wallet profiles, alerts. History, win rates and accounts come with the full Next.js + Supabase build.
+
 ## Status
 - [x] Product spec — `SPEC.md`
 - [x] Database schema with dedup, indexes and RLS — `supabase/migrations/0001_init.sql`
